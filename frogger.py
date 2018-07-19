@@ -53,7 +53,9 @@ class Population:
     bestFrog = 0
     minStep = 1000
     fitnessSum = 0
-    frogs_alive = 1000
+    frogs_alive = 100
+    isFinished = False
+    generation = 1
 
     def __init__(self, tests, size):  # Constructor
         self.frogs_alive = tests
@@ -71,53 +73,73 @@ class Population:
     def selection(self):
         temp = list(self.bestFrog())
         frogs.empty()
+        if (self.isFinished == False):
 
-        for x in range(0, 1000):
-            d = list(temp)
-            if x == 1:
+            for x in range(0, 100):
+                d = list(temp)
+                if x == 1:
+                    b = Brain(1000, d)
+                else:
+                    b = Brain(1000, mutate(d))
+                frogs.add(Frog(167.5, 350, self.size, b))
+
+            Population.frogs_alive = 100
+        else:
+            for x in range(0, 1):
+                d = list(temp)
                 b = Brain(1000, d)
-            else:
-                b = Brain(1000, mutate(d))
-            frogs.add(Frog(167.5, 350, self.size, b))
+                frogs.add(Frog(167.5, 350, self.size, b))
 
-        Population.frogs_alive = 1000
+            Population.frogs_alive = 1
 
     def bestFrog(self):
-        fitnessList = []
-        stepsList = []
-        for sprite in frogs:
-            stepsList.append(sprite.brain.step)
-            fitnessList.append(sprite.fitness)
+        if (self.isFinished == False):
 
-        for i in range(0, 999):
-            for j in range(0, 999):
-                if (fitnessList[j] > fitnessList[j + 1]):
-                    temp = fitnessList[j]
-                    fitnessList[j] = fitnessList[j + 1]
-                    fitnessList[j + 1] = temp
+            fitnessList = []
+            stepsList = []
+            for sprite in frogs:
+                stepsList.append(sprite.brain.step)
+                fitnessList.append(sprite.fitness)
 
-                    temp = stepsList[j]
-                    stepsList[j] = stepsList[j + 1]
-                    stepsList[j + 1] = temp
+            for i in range(0, 99):
+                for j in range(0, 99):
+                    if (fitnessList[j] > fitnessList[j + 1]):
+                        temp = fitnessList[j]
+                        fitnessList[j] = fitnessList[j + 1]
+                        fitnessList[j + 1] = temp
 
-        print(fitnessList[999])
-        print(stepsList[999])
+                        temp = stepsList[j]
+                        stepsList[j] = stepsList[j + 1]
+                        stepsList[j + 1] = temp
 
-        best = 999
-        for h in range(0, 1000):
-            if stepsList[h] < stepsList[999] and fitnessList[999] == fitnessList[h]:
-                best = h
+            print(fitnessList[99])
+            print(stepsList[99])
 
-        print(fitnessList[best])
-        print(stepsList[best])
+            best = 99
+            for h in range(0, 99):
+                if stepsList[h] < stepsList[99] and fitnessList[99] == fitnessList[h]:
+                    best = h
 
-        for sprite in frogs:
-            if (fitnessList[best] == sprite.fitness and stepsList[best] == sprite.brain.step):
+            print(fitnessList[best])
+            print(stepsList[best])
+
+            if (fitnessList[best] == 13):
+                self.isFinished = True
+            else:
+                self.generation += 1
+
+            for sprite in frogs:
+                if (fitnessList[best] == sprite.fitness and stepsList[best] == sprite.brain.step):
+                    bestFrog = list(sprite.brain.directions)
+                    print(str(sprite.fitness) + '   ' + str(sprite.brain.step))
+                    break
+
+            return bestFrog
+
+        else:
+            for sprite in frogs:
                 bestFrog = list(sprite.brain.directions)
-                print(str(sprite.fitness) + '   ' + str(sprite.brain.step))
-                break
-
-        return bestFrog
+            return bestFrog
 
 
 class Brain:
@@ -205,7 +227,7 @@ class Frog(pygame.sprite.Sprite):
             self.brain.step += 1
 
         # If frog is in the river
-        if self.rect.y <= 175 and self.rect.y != 50:
+        if self.rect.y <= 175 and self.rect.y != 50 and self.dead == False:
             crash = False
             for x in all_sprites:
                 if x.rect.colliderect(self):
@@ -217,8 +239,10 @@ class Frog(pygame.sprite.Sprite):
                     break
             if crash == False:
                 self.die()
-        elif self.rect.y == 50:
-            reachedGoal = True
+        elif self.rect.y == 50 and self.dead == False:
+            self.fitness = 13
+            self.dead = True
+            Population.frogs_alive -= 1
 
     def die(self):
         self.rect.x = 1000
@@ -365,7 +389,19 @@ def reset():
                 turtles.add(Turtle(1, 2, 87.5 * (8 - i), 100, 50, 25, -2))
 
 
-pop = Population(1000, 1000)
+def text_objects(text, font):
+    textSurface = font.render(text, True, white)
+    return textSurface, textSurface.get_rect()
+
+
+def message_display(text):
+    largeText = pygame.font.Font('freesansbold.ttf', 12)
+    TextSurf, TextRect = text_objects(text, largeText)
+    TextRect.center = ((display_width / 2), 10)
+    screen.blit(TextSurf, TextRect)
+
+
+pop = Population(100, 1000)
 reset()
 
 
@@ -375,12 +411,13 @@ while not done:
         if event.type == pygame.QUIT:
             done = True
 
+    screen.blit(backgroundImg, (0, 0))
+
     if (Population.frogs_alive == 0):
         pop.selection()
         reset()
 
-    screen.blit(backgroundImg, (0, 0))
-
+    message_display('generation: ' + str(pop.generation))
     all_sprites.update()
     all_sprites.draw(screen)
     turtles.update()
@@ -390,7 +427,7 @@ while not done:
 
     pygame.display.update()
 
-    clock.tick(30)
+    clock.tick(15)
     turtleCounter += 1
     if turtleCounter == 50:
         turtleCounter = 0
