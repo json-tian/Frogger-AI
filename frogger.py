@@ -3,6 +3,7 @@
 # Author: Jason Tian
 import pygame
 import random
+import time
 
 pygame.init()
 display_width = 350
@@ -20,9 +21,7 @@ turtles = pygame.sprite.Group()
 frogs = pygame.sprite.Group()
 
 frogUpImg = pygame.image.load('images/frog10.gif')
-frogLeftImg = pygame.image.load('images/frog00.gif')
-frogRightImg = pygame.image.load('images/frog20.gif')
-frogDownImg = pygame.image.load('images/frog30.gif')
+frogDead = pygame.image.load('images/frog11.png')
 
 yellowCarImg = pygame.image.load('images/yellowCar.gif')  # 2nd Row
 dozerImg = pygame.image.load('images/dozer.gif')  # 3rd Row
@@ -43,9 +42,8 @@ backgroundImg = pygame.image.load('images/background.gif')
 
 done = False
 turtleCounter = 0
-# Objects
 
-# AI object
+# Classes
 
 
 class Population:
@@ -61,6 +59,10 @@ class Population:
         self.frogs_alive = tests
         self.size = size
         self.tests = tests
+        self.randomize()
+
+    # Randomize frog directions
+    def randomize(self):
         for i in range(0, self.tests):
             directions = []
             for z in range(0, self.size):
@@ -70,28 +72,51 @@ class Population:
             b = Brain(1000, directions)
             frogs.add(Frog(167.5, 350, self.size, b))
 
+    # Randomly selecting a parent frog from previous generation
+    def selectParent(self):
+        self.setFitnessSum()
+        rand = random.randint(100, self.fitnessSum)
+        runningSum = 0
+
+        for i in frogs:
+            runningSum += i.fitness
+            if runningSum >= rand:
+                return i.brain.directions
+
+    # Finding the sum of all the fitnesses from previous generation
+    def setFitnessSum(self):
+        sum = 0
+        for i in frogs:
+            sum += i.fitness
+        self.fitnessSum = sum
+
+    # Selecting a new generation of frogs
     def selection(self):
         temp = list(self.bestFrog())
-        frogs.empty()
+        newFrogs = []
         if (self.isFinished == False):
+            d = list(temp)
+            b = Brain(1000, d)
+            newFrogs.append(Frog(167.5, 350, self.size, b))
 
-            for x in range(0, 100):
-                d = list(temp)
-                if x == 1:
-                    b = Brain(1000, d)
-                else:
-                    b = Brain(1000, mutate(d))
-                frogs.add(Frog(167.5, 350, self.size, b))
-
+            for x in range(1, 100):
+                d = list(self.selectParent())
+                b = Brain(1000, mutate(d))
+                newFrogs.append(Frog(167.5, 350, self.size, b))
             Population.frogs_alive = 100
+
+            frogs.empty()
+            for i in newFrogs:
+                frogs.add(i)
         else:
+            frogs.empty()
             for x in range(0, 1):
                 d = list(temp)
                 b = Brain(1000, d)
                 frogs.add(Frog(167.5, 350, self.size, b))
-
             Population.frogs_alive = 1
 
+    # Determining the best frog from the previous generation and returning its directions
     def bestFrog(self):
         if (self.isFinished == False):
 
@@ -145,16 +170,13 @@ class Population:
 class Brain:
     step = 0
 
-    def __init__(self, size, directions):  # Constructor
+    def __init__(self, size, directions):
         self.size = size
         self.directions = directions
 
 
-# Turtle Object
-
-
 class Turtle(pygame.sprite.Sprite):
-    def __init__(self, dive, size, startX, startY, width, height, speed):  # Constructor
+    def __init__(self, dive, size, startX, startY, width, height, speed):
         pygame.sprite.Sprite.__init__(self)
         self.dive = dive  # 1 - does not dive. 2 - dives
         self.size = size
@@ -173,6 +195,7 @@ class Turtle(pygame.sprite.Sprite):
         elif (self.size == 3):
             self.image = turtleThreeImg
 
+    # Updating its new location
     def update(self):
         self.rect.x += self.speed
 
@@ -185,16 +208,16 @@ class Turtle(pygame.sprite.Sprite):
 
         self.collision()
 
+    # Checking if frog is on turtle. Frog dies if turtle is diving.
     def collision(self):
         for f in frogs:
-            if f.rect.colliderect(self):
+            if f.rect.colliderect(self) and f.dead == False:
                 if self.state == 1:
                     f.die()
                 else:
                     f.rect.x += self.speed
 
 
-# Frog Object
 class Frog(pygame.sprite.Sprite):
     dead = False
     reachedGoal = False
@@ -210,6 +233,7 @@ class Frog(pygame.sprite.Sprite):
         self.size = size
         self.brain = brain
 
+    # Update frog position
     def update(self):
         stepNum = self.brain.step
         if stepNum < self.size and self.dead == False:
@@ -244,9 +268,11 @@ class Frog(pygame.sprite.Sprite):
             self.dead = True
             Population.frogs_alive -= 1
 
+    # If the frog dies
     def die(self):
-        self.rect.x = 1000
-        self.rect.y = 1000
+        #self.rect.x = 1000
+        #self.rect.y = 1000
+        self.image = frogDead
         self.dead = True
         Population.frogs_alive -= 1
         print('Frogs alive: ' + str(Population.frogs_alive) + '  Fitness: ' + str(self.fitness) + '  Steps: ' + str(self.brain.step))
@@ -272,6 +298,7 @@ class Log(pygame.sprite.Sprite):
         elif (self.size == 'long'):
             self.image = logLongImg
 
+    #Updating log position
     def update(self):
         self.rect.x += self.speed
 
@@ -284,9 +311,10 @@ class Log(pygame.sprite.Sprite):
 
         self.collision()
 
+    #Checking for collision with frog.
     def collision(self):
         for f in frogs:
-            if f.rect.colliderect(self):
+            if f.rect.colliderect(self) and f.dead == False:
                 f.rect.x += self.speed
 
 
@@ -316,6 +344,7 @@ class Car(pygame.sprite.Sprite):
         elif (self.img == 'purple'):
             self.image = purpleCarImg
 
+    #Update Car position
     def update(self):
         if (self.direction == -1):
             self.rect.x += self.speed
@@ -328,20 +357,21 @@ class Car(pygame.sprite.Sprite):
             self.rect.x = display_width + 75
         self.collision()
 
+    #Checks car collision with frogs
     def collision(self):
         for f in frogs:
-            if (self.rect.colliderect(f)):
+            if (self.rect.colliderect(f) and f.dead == False):
                 f.die()
 
-
+#Randomly mutates the direction vectors of the given frog
 def mutate(d):
     for i in range(0, len(d)):
-        randomNum = random.randint(0, 2)
+        randomNum = random.randint(0, 4)
         if randomNum == 1:
             d[i] = random.randint(0, 4)
     return d
 
-
+#Reset game board
 def reset():
 
     for r in turtles:
@@ -373,7 +403,7 @@ def reset():
         elif i < 6:
             all_sprites.add(Log(-150 + 200 * (6 - i), 125, 'long', 150, 25, 4))
         elif i < 9:
-            all_sprites.add(Log(-100 + 150 * (9 - i), 75, 'medium', 87.5, 25, 6))
+            all_sprites.add(Log(-200 + 150 * (9 - i), 75, 'medium', 87.5, 25, 6))
 
     for i in range(0, 8):
             # dive, size, startX, startY, width, height, speed
@@ -413,9 +443,11 @@ while not done:
 
     screen.blit(backgroundImg, (0, 0))
 
+    #If all frogs are dead, reset game board
     if (Population.frogs_alive == 0):
         pop.selection()
         reset()
+        time.sleep(1)
 
     message_display('generation: ' + str(pop.generation))
     all_sprites.update()
@@ -428,6 +460,8 @@ while not done:
     pygame.display.update()
 
     clock.tick(15)
+
+    #Handling diving of turtle
     turtleCounter += 1
     if turtleCounter == 50:
         turtleCounter = 0
