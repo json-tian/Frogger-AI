@@ -10,7 +10,6 @@ display_width = 350
 display_height = 400
 
 white = (255, 255, 255)
-black = (0, 0, 0)
 
 screen = pygame.display.set_mode((display_width, display_height))
 pygame.display.set_caption('Frogger')
@@ -40,19 +39,20 @@ turtleThreeDownImg = pygame.image.load('images/turtlethreedown.gif')
 
 backgroundImg = pygame.image.load('images/background.gif')
 
-done = False
-turtleCounter = 0
+frogsNum = 100  # Number of frogs spawned per generation
+done = False   # Application is still running
+turtleCounter = 0  # Timer for turtle state
+fps = 20  # Simulation speed (actions per second)
 
 # Classes
 
 
 class Population:
-    gen = 1
-    bestFrog = 0
-    minStep = 1000
-    fitnessSum = 0
-    frogs_alive = 100
-    isFinished = False
+    bestFrog = 0  # The index for the best (most fit) frog
+    minStep = 1000  # The fastest route to get to the highest fitness
+    fitnessSum = 0  # Sum of all frogs' fitness
+    frogs_alive = frogsNum  # All frogs are alive at the beginning
+    isFinished = False  # Whether or not a frog has ever reached the end
     generation = 1
 
     def __init__(self, tests, size):  # Constructor
@@ -61,7 +61,7 @@ class Population:
         self.tests = tests
         self.randomize()
 
-    # Randomize frog directions
+    # Randomizes the frog's directions
     def randomize(self):
         for i in range(0, self.tests):
             directions = []
@@ -75,7 +75,7 @@ class Population:
     # Randomly selecting a parent frog from previous generation
     def selectParent(self):
         self.setFitnessSum()
-        rand = random.randint(100, self.fitnessSum)
+        rand = random.randint(frogsNum, self.fitnessSum)
         runningSum = 0
 
         for i in frogs:
@@ -99,11 +99,11 @@ class Population:
             b = Brain(1000, d)
             newFrogs.append(Frog(167.5, 350, self.size, b))
 
-            for x in range(1, 100):
+            for x in range(1, frogsNum):
                 d = list(self.selectParent())
                 b = Brain(1000, mutate(d))
                 newFrogs.append(Frog(167.5, 350, self.size, b))
-            Population.frogs_alive = 100
+            Population.frogs_alive = frogsNum
 
             frogs.empty()
             for i in newFrogs:
@@ -126,8 +126,8 @@ class Population:
                 stepsList.append(sprite.brain.step)
                 fitnessList.append(sprite.fitness)
 
-            for i in range(0, 99):
-                for j in range(0, 99):
+            for i in range(0, frogsNum - 1):
+                for j in range(0, frogsNum - 1):
                     if (fitnessList[j] > fitnessList[j + 1]):
                         temp = fitnessList[j]
                         fitnessList[j] = fitnessList[j + 1]
@@ -137,12 +137,12 @@ class Population:
                         stepsList[j] = stepsList[j + 1]
                         stepsList[j + 1] = temp
 
-            print(fitnessList[99])
-            print(stepsList[99])
+            print(fitnessList[frogsNum - 1])
+            print(stepsList[frogsNum - 1])
 
-            best = 99
-            for h in range(0, 99):
-                if stepsList[h] < stepsList[99] and fitnessList[99] == fitnessList[h]:
+            best = frogsNum - 1
+            for h in range(0, frogsNum - 1):
+                if stepsList[h] < stepsList[frogsNum - 1] and fitnessList[frogsNum - 1] == fitnessList[h]:
                     best = h
 
             print(fitnessList[best])
@@ -270,12 +270,10 @@ class Frog(pygame.sprite.Sprite):
 
     # If the frog dies
     def die(self):
-        #self.rect.x = 1000
-        #self.rect.y = 1000
         self.image = frogDead
         self.dead = True
         Population.frogs_alive -= 1
-        print('Frogs alive: ' + str(Population.frogs_alive) + '  Fitness: ' + str(self.fitness) + '  Steps: ' + str(self.brain.step))
+        print('Frogs alive: ' + str(Population.frogs_alive))
 
 
 class Log(pygame.sprite.Sprite):
@@ -298,7 +296,7 @@ class Log(pygame.sprite.Sprite):
         elif (self.size == 'long'):
             self.image = logLongImg
 
-    #Updating log position
+    # Updating log position
     def update(self):
         self.rect.x += self.speed
 
@@ -311,7 +309,7 @@ class Log(pygame.sprite.Sprite):
 
         self.collision()
 
-    #Checking for collision with frog.
+    # Checking for collision with frog.
     def collision(self):
         for f in frogs:
             if f.rect.colliderect(self) and f.dead == False:
@@ -344,7 +342,7 @@ class Car(pygame.sprite.Sprite):
         elif (self.img == 'purple'):
             self.image = purpleCarImg
 
-    #Update Car position
+    # Update Car position
     def update(self):
         if (self.direction == -1):
             self.rect.x += self.speed
@@ -357,13 +355,15 @@ class Car(pygame.sprite.Sprite):
             self.rect.x = display_width + 75
         self.collision()
 
-    #Checks car collision with frogs
+    # Checks car collision with frogs
     def collision(self):
         for f in frogs:
             if (self.rect.colliderect(f) and f.dead == False):
                 f.die()
 
-#Randomly mutates the direction vectors of the given frog
+# Randomly mutates the direction vectors of the given frog
+
+
 def mutate(d):
     for i in range(0, len(d)):
         randomNum = random.randint(0, 4)
@@ -371,19 +371,18 @@ def mutate(d):
             d[i] = random.randint(0, 4)
     return d
 
-#Reset game board
-def reset():
+# Reset game board
 
+
+def reset():
     for r in turtles:
         r.kill()
-
     for r in all_sprites:
         r.kill()
 
     turtleCounter = 0
 
     # Creation of objects
-
     #(x, y, img, speed, direction, width, height)
     for i in range(0, 12):
         if i < 3:
@@ -431,9 +430,8 @@ def message_display(text):
     screen.blit(TextSurf, TextRect)
 
 
-pop = Population(100, 1000)
+pop = Population(frogsNum, 1000)
 reset()
-
 
 # Event handling loop (game loop)
 while not done:
@@ -443,7 +441,7 @@ while not done:
 
     screen.blit(backgroundImg, (0, 0))
 
-    #If all frogs are dead, reset game board
+    # If all frogs are dead, reset game board
     if (Population.frogs_alive == 0):
         pop.selection()
         reset()
@@ -459,9 +457,9 @@ while not done:
 
     pygame.display.update()
 
-    clock.tick(15)
+    clock.tick(fps)
 
-    #Handling diving of turtle
+    # Handling diving of turtle. Dives only at certain times
     turtleCounter += 1
     if turtleCounter == 50:
         turtleCounter = 0
